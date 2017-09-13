@@ -18,7 +18,7 @@ jsonfile.readFile(srcJsonFile, (err,data) => {
                 obj['lat'] = point[1];
                 return obj;
             });
-            jsonfile.writeFile(`./provinces/polygon/${fileName}.json`, coords, err => {
+            jsonfile.writeFile(`./provinces/${fileName}.json`, coords, err => {
                 if (err) return err;
             });
         } else if(content.geometry.type === 'MultiPolygon') {
@@ -30,7 +30,7 @@ jsonfile.readFile(srcJsonFile, (err,data) => {
                     return obj;
                 });
             });
-            jsonfile.writeFile(`./provinces/multipolygon/${fileName}.json`, coords, err => {
+            jsonfile.writeFile(`./provinces/${fileName}.json`, coords, err => {
                 if (err) return err;
             });
         }

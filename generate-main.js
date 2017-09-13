@@ -2,77 +2,75 @@
 
 const fs = require('fs'),
 	readMultipleFiles = require('read-multiple-files'),
-	dirPathPoly = './provinces/polygon/',
-	dirPathMulti = './provinces/multipolygon/';
+	dirPath = './provinces/';
 
-fs.readFile('Provinces.json', 'utf8', (err,rawData) => {
+fs.readdir(dirPath, (err,filesPath) => {
 	if (err) throw err;
-	rawData = JSON.parse(rawData);
+	filesPath = filesPath.map(filePath => dirPath + filePath);
+	readMultipleFiles(filesPath, 'utf8', (err,data) => {
+		if (err) throw err;
+		let i = 0;
 
-	function randomColor() {
-		let colorGen = Math.floor(0x1000000 * Math.random()).toString(16);
-		return '#' + ('000000' + colorGen).slice(-6);
-	}
-	
-	rawData.features.map(provinces => {
-		if(provinces.geometry.type === 'Polygon') {
-			fs.readdir(dirPathPoly, (err,filesPathPoly) => {
-				if (err) throw err;
-				filesPathPoly = filesPathPoly.map(filePathPoly => dirPathPoly + filePathPoly);
-				readMultipleFiles(filesPathPoly, 'utf8', (err,data) => {
-					if (err) throw err;
-					let i = 0;
+		let generateCode = data.map(coords => {
+			let colorGen = Math.floor(0x1000000 * Math.random()).toString(16);
+			let color = '#' + ('000000' + colorGen).slice(-6);
+			i += 1;
+			return `
+				var shape${i}Coords = ${coords};
+				var shape${i} = new google.maps.Polygon({
+				    paths: shape${i}Coords,
+				    strokeColor: '${color}',
+				    strokeOpacity: 0.8,
+				    strokeWeight: 2,
+				    fillColor: '${color}',
+				    fillOpacity: 0.5
+			    });
+			    shape${i}.setMap(map);
+			`;
+		});
+		generateCode = generateCode.reduce((aggregate, coordinate) => aggregate + coordinate);
 
-					let generatePoly = data.map(coords => {
-						i += 1;
-						return `
-							var shape${i}Coords = ${coords};
-							var shape${i} = new google.maps.Polygon({
-							    paths: shape${i}Coords,
-							    strokeColor: '${randomColor()}',
-							    strokeOpacity: 0.8,
-							    strokeWeight: 2,
-							    fillColor: '${randomColor()}',
-							    fillOpacity: 0.5
-						    });
-						    shape${i}.setMap(map);
-						`;
-					});
-					generatePoly = generatePoly.reduce((aggregate, coordinate) => aggregate + coordinate);
-					fs.writeFile('./polygon.js', generatePoly, err => {
-					    if (err) return err;
-					})
-				})
-			})
-		} else if(provinces.geometry.type === 'MultiPolygon') {
-			fs.readdir(dirPathMulti, (err,filesPathMulti) => {
-				if (err) throw err;
-				filesPathMulti = filesPathMulti.map(filePathMulti => dirPathMulti + filePathMulti);
-				readMultipleFiles(filesPathMulti, 'utf8', (err,data) => {
-					if (err) throw err;
-					let i = 20;
+		let content = `
+	        <!DOCTYPE html>
+	        <html>
+	          <head>
+	            <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+	            <meta charset="utf-8">
+	            <title>Simple Polygon</title>
+	            <style>
+	              #map {
+	                height: 100%;
+	              }
+	              html, body {
+	                height: 100%;
+	                margin: 0;
+	                padding: 0;
+	              }
+	            </style>
+	          </head>
+	          <body>
+	            <div id="map"></div>
+	            <script>
+	              function initMap() {
+	                var map = new google.maps.Map(document.getElementById('map'), {
+	                  zoom: 6,
+	                  center: {lat: 13.1024, lng: 120.7651}, // MINDORO
+	                  mapTypeId: 'terrain'
+	                });
 
-					let generateMulti = data.map(coords => {
-						i += 1;
-						return `
-							var shape${i}Coords = ${coords};
-							var shape${i} = new google.maps.Polygon({
-							    paths: shape${i}Coords,
-							    strokeColor: '${randomColor()}',
-							    strokeOpacity: 0.8,
-							    strokeWeight: 2,
-							    fillColor: '${randomColor()}',
-							    fillOpacity: 0.5
-						    });
-						    shape${i}.setMap(map);
-						`;
-					});
-					generateMulti = generateMulti.reduce((aggregate, coordinate) => aggregate + coordinate);
-					fs.writeFile('./multipolygon.js', generateMulti, err => {
-					    if (err) return err;
-					})
-				})
-			})
-		}
+	               ${generateCode}
+	              }
+	            </script>
+	            <script async defer
+	            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDl32dSXGt7MYeJnkofk4mARVT4VUF5Poo&callback=initMap">
+	            </script>
+	          </body>
+	        </html>
+	    `;
+
+
+		fs.writeFile('index.html', content, err => {
+		    if (err) return err;
+		})
 	})
 });
